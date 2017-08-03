@@ -4,25 +4,69 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
-
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace GVision
 {
-	class Program
+	partial class Program
 	{
+
+		private static string predictionKey;
+		private static string predictionEndpointUrl;
 
 		public static string directoryPath;
 		public static string[] pictures;
-
+		public static bool goodPath;
 		static void Main(string[] args)
 		{
 
-			Console.WriteLine("Introdu cale poze:");
+			do
+			{
+				Console.WriteLine("Introdu cale poze:");
+
+				directoryPath = Console.ReadLine();
+
+				goodPath = true;
+				try
+				{
+					pictures = Directory.GetFiles(directoryPath);
+				}
+				catch
+				{
+					goodPath = false;
+				}
+			} while (!goodPath);
+
+			Console.WriteLine();
+
+
+			foreach( string path in pictures)
+			{
+				byte[] pictureBytes = GetPictureBytes(path);
+				MakeRequest(pictureBytes).Wait();
+			}
+		}
+
+
+
+		static byte[] GetPictureBytes(string path)
+		{
+			FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
+			BinaryReader binaryReader = new BinaryReader(fileStream);
+			return binaryReader.ReadBytes((int)fileStream.Length);
+		}
 	
-			directoryPath = Console.ReadLine();
-
-			pictures = Directory.GetFiles(directoryPath);
-
+		static async Task MakeRequest (byte[] byteData)
+		{
+			using (var content = new ByteArrayContent(byteData))
+			{
+				var client = new HttpClient();
+				client.DefaultRequestHeaders.Add("Prediction-Key", predictionKey);
+				content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+				HttpResponseMessage response = await client.PostAsync(_predictionEndpointUrl, content);
+				Console.WriteLine(await response.Content.ReadAsStringAsync());
+			}
 		}
 	}
 }
