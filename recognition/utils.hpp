@@ -6,6 +6,8 @@
 
 #include <opencv2/core/core.hpp>
 
+#define NETWORK_SIZE 64
+
 struct ImageData {
 	std::string classname;
 	cv::Mat bowFeatures;
@@ -13,7 +15,7 @@ struct ImageData {
 
 typedef std::vector<std::string>::const_iterator vec_iter;
 
-std::vector<std::string> getFilesFromDir(char *dir);
+std::vector<std::string> getFilesFromDir(const char *dir);
 
 std::string getClassName(const std::string& filename);
 

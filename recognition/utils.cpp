@@ -1,8 +1,17 @@
 #include "utils.hpp"
 
+#include <iostream>
+#include <fstream>
 #include <dirent.h>
 
-std::vector<std::string> getFilesFromDir(char *dir)
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
+#define IMAGE_WIDTH 1024
+
+std::vector<std::string> getFilesFromDir(const char *dir)
 {
 	DIR *dp;
 	std::vector<std::string> files;
@@ -13,7 +22,8 @@ std::vector<std::string> getFilesFromDir(char *dir)
 	}
 
 	while ((dirp = readdir(dp)) != NULL)
-		files.push_back(std::string(dir) + "/" + std::string(dirp->d_name));
+		if (strcmp(dirp->d_name, "..") && strcmp(dirp->d_name, "."))
+			files.push_back(std::string(dir) + "/" + std::string(dirp->d_name));
 	closedir(dp);
 	return files;
 }
@@ -35,14 +45,23 @@ void readImages(vec_iter begin, vec_iter end, std::function<void (const std::str
 {
 	for (auto it = begin; it != end; ++it) {
 		std::string filename = *it;
-		std::cout << "Reading image " << filename << " ..." << std::endl;
+		std::cout << "Reading " << filename << std::endl;
 		cv::Mat img = cv::imread(filename, 0);
 		if (img.empty()) {
 			std::cerr << "WARNING: Could not read image." << std::endl;
 			continue;
 		}
+
+		// Resize image
+		int w = img.size().width;
+		int h = img.size().height * IMAGE_WIDTH / (float)w;
+		w = IMAGE_WIDTH;
+		cv::Size size(w, h);
+		cv::Mat smallImg;
+		cv::resize(img, smallImg, size);
+
 		std::string classname = getClassName(filename);
-		cv::Mat descriptors = getDescriptors(img);
+		cv::Mat descriptors = getDescriptors(smallImg);
 		callback(classname, descriptors);
 	}
 }

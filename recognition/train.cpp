@@ -44,8 +44,7 @@ cv::Ptr<cv::ml::ANN_MLP> getTrainedNeuralNetwork(const cv::Mat& trainSamples, co
 	int networkInputSize = trainSamples.cols;
 	int networkOutputSize = trainResponses.cols;
 	cv::Ptr<cv::ml::ANN_MLP> mlp = cv::ml::ANN_MLP::create();
-	std::vector<int> layerSizes = { networkInputSize, networkInputSize / 2,
-									networkOutputSize };
+	std::vector<int> layerSizes = { networkInputSize, networkInputSize / 2, networkOutputSize };
 	mlp->setLayerSizes(layerSizes);
 	mlp->setActivationFunction(cv::ml::ANN_MLP::SIGMOID_SYM);
 	mlp->train(trainSamples, cv::ml::ROW_SAMPLE, trainResponses);
@@ -61,28 +60,19 @@ void saveModels(cv::Ptr<cv::ml::ANN_MLP> mlp, const cv::Mat& vocabulary,
 {
 	mlp->save("mlp.yaml");
 	cv::FileStorage fs("vocabulary.yaml", cv::FileStorage::WRITE);
-	fs << vocabulary;
+	fs << "vocabulary" << vocabulary;
 	fs.release();
-	std::ofstream classesOutput("classes.txt");
-	classesOutput << classes.size();
-	for (auto it = classes.begin(); it != classes.end(); ++it)
-		classesOutput << *it;
-	classesOutput << std::endl;
-	classesOutput.close();
 }
 
 int main(int argc, char **argv)
 {
-	if (argc != 3) {
-		std::cerr << "Usage: <IMAGES> <NETWORK_INPUT_LAYER_SIZE>" << std::endl;
+	if (argc != 2) {
+		std::cout << "Usage: train <train_data_folder>";
 		exit(-1);
 	}
-	char *dir = argv[1];
-	int networkInputSize = atoi(argv[2]);
-
 	std::cout << "Reading training set..." << std::endl;
 	double start = (double)cv::getTickCount();
-	std::vector<std::string> files = getFilesFromDir(dir);
+	std::vector<std::string> files = getFilesFromDir(argv[1]);
 	std::random_shuffle(files.begin(), files.end());
 
 	cv::Mat descriptorsSet;
@@ -97,7 +87,7 @@ int main(int argc, char **argv)
 	               // Append metadata to each extracted feature
 				   ImageData *data = new ImageData;
 				   data->classname = classname;
-				   data->bowFeatures = cv::Mat::zeros(cv::Size(networkInputSize, 1), CV_32F);
+				   data->bowFeatures = cv::Mat::zeros(cv::Size(NETWORK_SIZE, 1), CV_32F);
 				   for (int j = 0; j < descriptors.rows; j++)
 					   descriptorsMetadata.push_back(data);
 			   });
@@ -108,8 +98,8 @@ int main(int argc, char **argv)
 	cv::Mat labels;
 	cv::Mat vocabulary;
 	// Use k-means to find k centroids (the words of our vocabulary)
-	cv::kmeans(descriptorsSet, networkInputSize, labels, cv::TermCriteria(cv::TermCriteria::EPS +
-																		  cv::TermCriteria::MAX_ITER, 10, 0.01), 1, cv::KMEANS_PP_CENTERS, vocabulary);
+	cv::kmeans(descriptorsSet, NETWORK_SIZE, labels, cv::TermCriteria(cv::TermCriteria::EPS +
+																	  cv::TermCriteria::MAX_ITER, 10, 0.01), 1, cv::KMEANS_PP_CENTERS, vocabulary);
 	// No need to keep it on memory anymore
 	descriptorsSet.release();
 	std::cout << "Time elapsed in minutes: " << ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 << std::endl;
