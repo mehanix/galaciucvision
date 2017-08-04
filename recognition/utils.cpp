@@ -9,8 +9,6 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#define IMAGE_WIDTH 1024
-
 std::vector<std::string> getFilesFromDir(const char *dir)
 {
 	DIR *dp;
@@ -28,47 +26,45 @@ std::vector<std::string> getFilesFromDir(const char *dir)
 	return files;
 }
 
-
-/**
- * Extract the class name from a file name
- */
 std::string getClassName(const std::string& filename)
 {
 	return filename.substr(filename.find_last_of('/') + 1, 2);
 }
 
-/**
- * Read images from a list of file names and returns, for each read image,
- * its class name and its local descriptors
- */
-void readImages(vec_iter begin, vec_iter end, std::function<void (const std::string&, const cv::Mat&)> callback)
+void readImages(vector_iterator begin, vector_iterator end, std::function<void (const std::string&, const cv::Mat&)> callback)
 {
-	for (auto it = begin; it != end; ++it) {
-		std::string filename = *it;
-		std::cout << "Reading " << filename << std::endl;
-		cv::Mat img = cv::imread(filename, 0);
+	vector_iterator it;
+	for (it = begin; it != end; ++it) {
+		std::string file = *it;
+		std::cout << "Reading " << file << std::endl;
+		cv::Mat img = cv::imread(file, 0);
 		if (img.empty()) {
-			std::cerr << "WARNING: Could not read image." << std::endl;
+			std::cout << "Could not read image." << std::endl;
 			continue;
 		}
 
-		// Resize image
-		int w = img.size().width;
-		int h = img.size().height * IMAGE_WIDTH / (float)w;
-		w = IMAGE_WIDTH;
-		cv::Size size(w, h);
-		cv::Mat smallImg;
-		cv::resize(img, smallImg, size);
+		std::string classname = getClassName(file);
+		cv::Mat descriptors;
 
-		std::string classname = getClassName(filename);
-		cv::Mat descriptors = getDescriptors(smallImg);
+		// Resize image if needed
+		int w, h;
+		w = img.size().width;
+		h = img.size().height;
+		if (w > MAX_IMAGE_WIDTH) {
+			h = img.size().height * MAX_IMAGE_WIDTH / (float)w;
+			w = MAX_IMAGE_WIDTH;
+			cv::Size size(w, h);
+			cv::Mat resizedImg;
+			cv::resize(img, resizedImg, size);
+			descriptors = getDescriptors(resizedImg);
+		} else {
+			descriptors = getDescriptors(img);
+		}
+
 		callback(classname, descriptors);
 	}
 }
 
-/**
- * Extract local features for an image
- */
 cv::Mat getDescriptors(const cv::Mat& img)
 {
 	cv::Ptr<cv::KAZE> kaze = cv::KAZE::create();
