@@ -25,12 +25,13 @@ cv::Mat getBOWFeatures(cv::FlannBasedMatcher& flann, const cv::Mat& descriptors,
 
 int main(int argc, char const *argv[])
 {
-	if (argc != 2) {
-		std::cout << "Usage: score <data_folder>";
+	bool singleFile = false;
+	if (argc != 2 && argc != 3) {
+		std::cout << "Usage: score <data_folder>" << std::endl;
+		std::cout << "Usage: score -f <file>" << std::endl;
 		exit(-1);
 	}
 
-	std::cout << "Loading neural network..." << std::endl;
 	cv::Ptr<cv::ml::ANN_MLP> mlp = cv::Algorithm::load<cv::ml::ANN_MLP>("mlp.yaml");
 	cv::FileStorage fs("vocabulary.yaml", cv::FileStorage::READ);
 
@@ -40,10 +41,13 @@ int main(int argc, char const *argv[])
 	flann.add(vocabulary);
 	flann.train();
 
-	std::cout << "Reading images..." << std::endl;
-	const char *dir = argv[1];
-	std::vector<std::string> files = getFilesFromDir(dir);
-	double start = cv::getTickCount();
+	std::vector<std::string> files;
+	if (argc == 3 && !strcmp(argv[1], "-f")) {
+		files.push_back(std::string(argv[2]));
+		singleFile = true;
+	} else {
+		files = getFilesFromDir(argv[1]);
+	}
 
 	cv::Mat samples;
 	readImages(files.begin(), files.end(),
@@ -51,17 +55,14 @@ int main(int argc, char const *argv[])
 				   cv::Mat bowFeatures = getBOWFeatures(flann, descriptors, NETWORK_SIZE);
 				   cv::normalize(bowFeatures, bowFeatures, 0, bowFeatures.rows, cv::NORM_MINMAX, -1, cv::Mat());
 				   samples.push_back(bowFeatures);
-			   });
-	std::cout << "Time elapsed in minutes: " << ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 << std::endl;
+			   }, false);
 
-	std::cout << std::endl;
-
-	std::cout << "Results:" << std::endl;
 	cv::Mat scores;
+	float score;
 	mlp->predict(samples, scores);
 	for (int i = 0; i < scores.rows; i++) {
-		std::cout << files.at(i) << " ";
-		float score = scores.row(i).at<float>(0);
+		if (!singleFile) std::cout << files.at(i) << " ";
+		score = scores.row(i).at<float>(0);
 		score = score > 1 ? 100 : (score < 0 ? 0 : score * 100);
 		std::cout << score << std::endl;
 	}

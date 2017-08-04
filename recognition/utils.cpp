@@ -31,12 +31,12 @@ std::string getClassName(const std::string& filename)
 	return filename.substr(filename.find_last_of('/') + 1, 2);
 }
 
-void readImages(vector_iterator begin, vector_iterator end, std::function<void (const std::string&, const cv::Mat&)> callback)
+void readImages(vector_iterator begin, vector_iterator end, std::function<void (const std::string&, const cv::Mat&)> callback, bool printProgress)
 {
 	vector_iterator it;
 	for (it = begin; it != end; ++it) {
 		std::string file = *it;
-		std::cout << "Reading " << file << std::endl;
+		if (printProgress) std::cout << "Reading " << file << std::endl;
 		cv::Mat img = cv::imread(file, 0);
 		if (img.empty()) {
 			std::cout << "Could not read image." << std::endl;

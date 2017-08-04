@@ -22,6 +22,6 @@ std::string getClassName(const std::string& filename);
 
 cv::Mat getDescriptors(const cv::Mat& img);
 
-void readImages(vector_iterator begin, vector_iterator end, std::function<void (const std::string&, const cv::Mat&)> callback);
+void readImages(vector_iterator begin, vector_iterator end, std::function<void (const std::string&, const cv::Mat&)> callback, bool printProgress = true);
 
 #endif // !__UTILS_HPP
