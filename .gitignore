@@ -32,11 +32,10 @@
 *.out
 *.app
 
-# Train data and pictures
-recognition/*.yaml
-recognition/pictures
-recognition/train_data
-
 # Executables
 recognition/train
 recognition/score
+
+# Train data and pictures
+recognition/*.yaml
+pictures/*
