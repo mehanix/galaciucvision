@@ -9,42 +9,53 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+
+bool isPathValid(const char *path)
+{
+	int len = strlen(path), extlen;
+	const char *ext[] = { ".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG" };
+	for (size_t i = 0; i < sizeof(ext) / sizeof(ext[0]); i++) {
+		extlen = strlen(ext[i]);
+		if (len >= extlen && !strcmp(path + len - extlen, ext[i])) return true;
+	}
+	return false;
+}
+
 std::vector<std::string> getFilesFromDir(const char *dir)
 {
 	DIR *dp;
 	std::vector<std::string> files;
 	struct dirent *dirp;
-	if ((dp = opendir(dir)) == NULL) {
-		std::cout << "Could not open " << dir << std::endl;
-		exit(-1);
-	}
+	if ((dp = opendir(dir)) == NULL) throw "Could not open " + std::string(dir);
 
 	while ((dirp = readdir(dp)) != NULL)
 		if (strcmp(dirp->d_name, "..") && strcmp(dirp->d_name, "."))
-			files.push_back(std::string(dir) + "/" + std::string(dirp->d_name));
+			if (isPathValid(dirp->d_name))
+				files.push_back(std::string(dir) + "/" + std::string(dirp->d_name));
+
 	closedir(dp);
 	return files;
 }
 
-std::string getClassName(const std::string& filename)
+cv::Mat getDescriptors(const cv::Mat& img)
 {
-	return filename.substr(filename.find_last_of('/') + 1, 2);
+	cv::Ptr<cv::AKAZE> akaze = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_KAZE, 0, 1);
+	std::vector<cv::KeyPoint> keypoints;
+	cv::Mat descriptors;
+	akaze->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+	return descriptors;
 }
 
-void readImages(vector_iterator begin, vector_iterator end, std::function<void (const std::string&, const cv::Mat&)> callback, bool printProgress)
+cv::Mat readImageDescriptors(const std::string& file)
 {
-	vector_iterator it;
-	for (it = begin; it != end; ++it) {
-		std::string file = *it;
-		if (printProgress) std::cout << "Reading " << file << std::endl;
+	// Check for cache
+	std::string cachePath = file + ".cache.yml";
+	cv::FileStorage cachefs(cachePath, cv::FileStorage::READ);
+	cv::Mat descriptors;
+	cachefs["descriptors"] >> descriptors;
+	if (descriptors.empty()) {
 		cv::Mat img = cv::imread(file, 0);
-		if (img.empty()) {
-			std::cout << "Could not read image." << std::endl;
-			continue;
-		}
-
-		std::string classname = getClassName(file);
-		cv::Mat descriptors;
+		if (img.empty()) throw "Could not read image";
 
 		// Resize image if needed
 		int w, h;
@@ -56,20 +67,13 @@ void readImages(vector_iterator begin, vector_iterator end, std::function<void (
 			cv::Size size(w, h);
 			cv::Mat resizedImg;
 			cv::resize(img, resizedImg, size);
-			descriptors = getDescriptors(resizedImg);
-		} else {
-			descriptors = getDescriptors(img);
+			img = resizedImg;
 		}
 
-		callback(classname, descriptors);
+		descriptors = getDescriptors(img);
+		cachefs.open(cachePath, cv::FileStorage::WRITE);
+		cachefs << "descriptors" << descriptors;
 	}
-}
-
-cv::Mat getDescriptors(const cv::Mat& img)
-{
-	cv::Ptr<cv::KAZE> kaze = cv::KAZE::create();
-	std::vector<cv::KeyPoint> keypoints;
-	cv::Mat descriptors;
-	kaze->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+	cachefs.release();
 	return descriptors;
 }

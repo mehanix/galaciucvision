@@ -1,11 +1,33 @@
-buildTrain:
-	g++ train.cpp utils.cpp -o train -Wl,-rpath,/usr/local/lib -L/usr/local/lib -lopencv_shape -lopencv_stitching -lopencv_objdetect -lopencv_superres -lopencv_videostab -lopencv_calib3d -lopencv_features2d -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_video -lopencv_photo -lopencv_ml -lopencv_imgproc -lopencv_flann -lopencv_core -Wall -std=c++11
+CC = g++
+CPPFLAGS = -lopencv_core -lopencv_features2d -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -lopencv_ml -lopencv_flann -Wall
+headers = utils.hpp
 
-buildScore:
-	g++ score.cpp utils.cpp -o score -Wl,-rpath,/usr/local/lib -L/usr/local/lib -lopencv_shape -lopencv_stitching -lopencv_objdetect -lopencv_superres -lopencv_videostab -lopencv_calib3d -lopencv_features2d -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_video -lopencv_photo -lopencv_ml -lopencv_imgproc -lopencv_flann -lopencv_core -Wall -std=c++11
+all: train score
+
+%.o: %.cpp $(headers)
+	$(CC) -c $< -o $@ -Wall
+
+train: train.o utils.o
+	$(CC) $^ -o $@ $(CPPFLAGS)
+
+score: score.o utils.o
+	$(CC) $^ -o $@ $(CPPFLAGS)
+
+mlp.yml vocabulary.yml: train
+	./train ../pictures/train_good ../pictures/train_bad
+
+run: score mlp.yml vocabulary.yml
+	./score ../pictures/drive/positive-public
+	./score ../pictures/drive/negative-public
+	./score ../pictures/utilitar-private-open-dataset/ppeace-private
+	./score ../pictures/utilitar-private-open-dataset/nwar-private
 
 clean:
-	rm -rf train score
+	rm -rf train score *.o
 
-cleanTrainData:
-	rm -rf mlp.yaml vocabulary.yaml
+cleanall: clean
+	rm -rf mlp.yml vocabulary.yml
+	find ../pictures -type f -name "*.yml" -delete
+	find ../pictures -type f -name "*.yaml" -delete
+
+.PHONY: all run clean cleanall

@@ -38,4 +38,5 @@ recognition/score
 
 # Train data and pictures
 recognition/*.yaml
+recognition/*.yml
 pictures/*
