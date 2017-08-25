@@ -33,10 +33,10 @@
 *.app
 
 # Executables
-recognition/train
-recognition/score
+train
+score
 
 # Train data and pictures
-recognition/*.yaml
-recognition/*.yml
+*.yaml
+*.yml
 pictures/*
